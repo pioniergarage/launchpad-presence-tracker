@@ -1,0 +1,14 @@
+#%RAML 1.0 DataType
+type: object
+properties:
+  id: string
+  name: string
+  address:
+    type: string
+    pattern: ^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$
+example: |
+  {
+    "id": "32",
+    "name": "My laptop",
+    "address": "3D:F2:C9:A6:B3:4F"
+  }
