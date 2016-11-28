@@ -1,3 +1,3 @@
 from sqlobject.sqlite import builder
 
-conn = builder()('log.db')
+conn = builder()('data/log.db')

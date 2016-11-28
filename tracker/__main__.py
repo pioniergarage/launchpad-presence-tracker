@@ -15,6 +15,6 @@ def main():
     #output.print_last_records(delta = datetime.timedelta(minutes=2))
 
 if __name__ == "__main__":
-    database.create()
+    #database.create()
     #database.fakeData()
     main()
