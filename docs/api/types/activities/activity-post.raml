@@ -1,0 +1,11 @@
+#%RAML 1.0 DataType
+type: object
+properties:
+  hash:
+    type: string
+    pattern: ^([A-Fa-f0-9]{64})$
+    description: SHA256 encoded MAC address
+example: |
+  {
+    "hash": "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c"
+  }

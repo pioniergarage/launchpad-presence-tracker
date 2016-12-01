@@ -1,0 +1,43 @@
+#%RAML 1.0
+title: Presence Tracker Server API
+version: 0.1
+baseUri: http://launchpadapp.pioniergarage.de/tracker/api/{api_version}
+baseUriParameters:
+  api_version:
+    type: string
+    description: Identifier for the current API version.
+
+
+/activities:
+  post:
+    body:
+      application/json:
+        type: object
+        properties:
+          activities:
+            type: array
+            items: !include types/activities/activity-post.raml
+          date: datetime
+        example: |
+          {
+            "activities": [
+              {
+                "hash": "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c"
+              },
+              {
+                "hash": "228b48a56dbc2ecf10393227ac9c9dc943881fd7a55452e12a09107476bef2b2"
+              }
+            ],
+            "date": "2016-12-01T09:24:54.508+01:00"
+          }
+    responses:
+      201:
+        body:
+          application/json:
+            type: object
+            properties:
+              success: boolean
+            example: |
+              {
+                "success": true
+              }
