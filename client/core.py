@@ -1,46 +1,35 @@
-import sys
-import hashlib
-import re
-from apscheduler.schedulers.background import BackgroundScheduler
+from lib import IntervalTimer, HashSet, API, Activity, Airodump
+import parser
+import datetime
+import time
 
-from config import interval_time
-import api
+def main():
 
-# MAC addresses with activities in the last monotoring interval
-hash_dict = {}
+    hashset = HashSet()
+    api = API("https://api.com/v1/")
+    process = Airodump("wlan1", "temp")
 
-# regular expression for extracting the MAC address from the commandline input
-line_regex = re.compile('^(MAC-ADDRESS: )(([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})).*$')
-line_regex_mac_group = 2
+    interval = datetime.timedelta(seconds=5)
 
-def listen():
-    k = 0
-    # background scheduler for the monotoring interval
-    scheduler = BackgroundScheduler()
-    scheduler.start()
+    def start_func():
+        process.start()
+
+    def end_func():
+        for activity in parser.extract_activities(process.output()):
+            hashset.add(activity, key=lambda x: x.mac)
+        process.stop()
+        API.post_activities(hashset.flush())
+        hashset.clear()
+
+    timer = IntervalTimer(start_func, end_func, interval)
+    timer.start()
+
     try:
-        scheduler.add_job(print_hash_dict, 'interval', seconds = interval_time)
-        buff = ''
         while True:
-            buff += sys.stdin.read(1)
-            if buff.endswith('\n'):
-                consume_line(buff[:-1])
-                buff = ''
-                k = k + 1
-    except KeyboardInterrupt:
-        sys.stdout.flush()
-        scheduler.shutdown()
-        pass
-    print('{0} lines processed'.format(k))
+            time.sleep(1)
+    except (KeyboardInterrupt, SystemExit):
+        print("KeyboardInterrupt detected, stopping process...")
 
-def consume_line(line):
-    mac = line_regex.search(line).group(line_regex_mac_group)
-    #print('MAC: {0}'.format(mac))
-    mac_hash = hashlib.sha256(mac.encode('UTF-8')).hexdigest()
-    hash_dict[mac] = {
-        'hash': mac_hash
-    }
 
-def print_hash_dict():
-    api.post_activities(hash_dict)
-    hash_dict.clear()
+if __name__ == '__main__':
+    main()
