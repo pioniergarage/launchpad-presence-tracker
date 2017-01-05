@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 ### To configure your version:
 
-Edit the `config.default.py` script. Configureable values are:
+Edit the `client/config.default.py` script and save it as `client/config.py`. Configureable values are:
 
 ````
 api_url = "https://api.example.com/v1"
