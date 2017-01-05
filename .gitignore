@@ -2,7 +2,7 @@
 client/config.py
 
 # Temp file
-temp.csv
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
