@@ -1,0 +1,34 @@
+#%RAML 1.0 DataType
+type: object
+properties:
+  activities:
+    type: array
+    items: !include ./activity-post.raml
+  count: integer
+  datetime: datetime
+  interval:
+    type: object
+    properties:
+      from: datetime
+      to: datetime
+      length?: time-only
+example: |
+  {
+    "activities": [
+      {
+        "hash": "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c"
+      },
+      {
+        "hash": "3cc42e2db6616297c893809a9740c59dd0650218e37473111408b32f8f3631e6"
+      },
+      {
+        "hash": "69521bd89b4d214319f43129739cc4077458b3382c3585ad3d2bc76ee1c7da31"
+      }
+    ],
+    "count": 3,
+    "datetime": "2016-12-01T18:30:00Z",
+    "interval": {
+      "from": "2016-12-01T18:00:00Z",
+      "to": "2016-12-01T18:30:00Z"
+    }
+  }
