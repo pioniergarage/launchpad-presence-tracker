@@ -1,3 +1,9 @@
+# Configuration file
+client/config.py
+
+# Temp file
+temp.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

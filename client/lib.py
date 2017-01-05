@@ -1,5 +1,6 @@
 import hashlib
 import datetime
+import time
 import json
 import subprocess
 import os
@@ -10,10 +11,18 @@ def round_down(number, multiple):
     assert type(multiple) is int
     return number - (number % multiple)
 
+def get_seconds_from_day(datetime_value):
+    return datetime_value.hour * 60 * 60 + datetime_value.minute * 60 + datetime_value.second
+
+def get_interval_index(datetime_value, interval):
+    assert type(interval) is datetime.timedelta
+    seconds = get_seconds_from_day(datetime_value)
+    return seconds // interval.seconds
+
 def get_next_start(interval):
     assert type(interval) is datetime.timedelta
     now = datetime.datetime.now()
-    now_seconds = now.hour * 60 * 60 + now.minute * 60 + now.second
+    now_seconds = get_seconds_from_day(now)
     last_start_seconds = round_down(now_seconds, interval.seconds)
     hour = last_start_seconds // (60*60)
     minute = (last_start_seconds // 60) % 60
@@ -35,19 +44,22 @@ class IntervalTimer:
         next_start = get_next_start(self.interval)
         next_restart = next_start + self.interval
 
-        self.start_job = self.scheduler.add_job(self.start_func, 'date', run_date=next_start)
+        self.scheduler.add_job(self.start_func, 'date', run_date=next_start)
 
         def restart_func():
             self.end_func()
             self.start_func()
 
-        self.restart_job = self.scheduler.add_job(restart_func, 'interval', next_run_time=next_restart, seconds=self.interval.seconds)
+        self.scheduler.add_job(restart_func, 'interval', next_run_time=next_restart, seconds=self.interval.seconds)
 
         self.scheduler.start()
 
+	return next_start
+
     def stop(self):
-        self.start_job.remove()
-        self.restart_job.remove()
+	for job in self.scheduler.get_jobs():
+		job.remove()
+	self.scheduler.shutdown()
 
 
 class Airodump:
@@ -72,13 +84,13 @@ class Airodump:
             stderr=self._devnull)
 
     def running(self):
-        return self._process.poll() == None
+        return self._process != None and self._process.poll() == None
 
     def stop(self):
         try:
             # Throws error when terminate is called more than once
             self._process.terminate()
-        except OSError:
+        except (OSError, AttributeError):
             pass
         # Make sure process is terminated
         while self.running():
@@ -115,22 +127,23 @@ class Activity:
     def to_csv(self):
         return ", ".join([self.mac, self.bssid, self.first.isoformat(" "), self.last.isoformat(" ")])
 
+
 class HashSet:
     """
     An Object which keeps the set of hash values from added items.
     """
 
-    def __init__(self):
+    def __init__(self, salt=""):
         self.table = {}
         self.set = set()
+        self.salt = salt
 
     def add(self, item, key=lambda x: x):
         assert isinstance(key(item), str)
         table_item = self.table.get(key(item))
         if table_item == None:
-            item_hash = hashlib.sha256(key(item).encode('utf-8')).hexdigest()
-            now = datetime.datetime.now()
-            table_item = (item_hash, item, now)
+            item_hash = hashlib.sha256(key(item).encode('utf-8') + self.salt).hexdigest()
+            table_item = (item_hash, item)
             self.table[key(item)] = table_item
         self.set.add(table_item)
 
@@ -149,14 +162,22 @@ class API:
     def __init__(self, base_url):
         self.base_url = base_url
 
-    def post_activities(self, hashset_list):
+    def post_activities(self, hashset_list, interval_info):
         url = "{0}/activities".format(self.base_url)
         now = datetime.datetime.now()
         body_dict = {
-            'activities': [{ 'hash': hash_value } for (hash_value, item, datetime_value) in hashset_list],
-            'date': now.replace(microsecond=0).isoformat(" ")
+            'activities': [{
+                # 'mac': item.mac,
+                # 'bssid': item.bssid,
+                # 'first': item.first.isoformat(),
+                # 'last': item.last.isoformat(),
+                'hash': hash_value
+            } for (hash_value, item) in hashset_list],
+            'interval': interval_info,
+            'count': len(hashset_list),
+            'datetime': now.replace(microsecond=0).isoformat()
         }
         json_str = json.dumps(body_dict, indent=2)
 
-        print("GET HTTP 1.1 {0}".format(url))
+        print("POST HTTP 1.1 {0}".format(url))
         print(json_str)

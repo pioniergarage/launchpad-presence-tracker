@@ -1,11 +1,27 @@
 import datetime
 
-api = {
-    """
-    The api endpoint to post the hash values to.
-    """
-    'url': 'http://launchpadapp.pioniergarage.de/tracker/api'
-}
+"""
+The api endpoint to post the hash values to.
+"""
+api_url = "https://api.example.com/v1"
+
+
+"""
+The secret for the api access.
+"""
+api_secret = ""
+
+
+"""
+Filter for bssids.
+"""
+bssid_filter = lambda bssid: True
+
+"""
+Filter for mac addresses.
+"""
+mac_filter = lambda mac: True
+
 
 """
 The interval between posts to the server. The interval must divide a day cleanly.
@@ -30,4 +46,16 @@ less than 30 minutes:
     30m, 32m, 36m, 40m, 45m, 48m, 53m 20s, 57m 36s, 1h, 1h 12m, 1h 20m, 1h 30m,
     1h 36m, 2h, 2h 24m, 2h 40m, 3h, 4h, 4h 48m, 6h, 8h, 12h, 1day
 """
-interval = datetime.timedelta(seconds=10)
+interval = datetime.timedelta(minutes=30)
+
+
+"""
+The salt for hashing the mac addresses.
+"""
+salt = ""
+
+
+"""
+WLan interface to use.
+"""
+interface = "wlan0"
