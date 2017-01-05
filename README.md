@@ -18,7 +18,7 @@ sudo python client
 
 ## Requirements
 
-Make sure to install the [Aircrack-ng](http://www.aircrack-ng.org/) suite and have a compatible WLan Adapter. For help to determine if your adapter is compatible click [here](http://www.aircrack-ng.org/doku.php?id=compatibility_drivers).
+Make sure to install the [Aircrack-ng](http://www.aircrack-ng.org/) suite and have a compatible WLAN adapter. For help to determine if your adapter is compatible click [here](http://www.aircrack-ng.org/doku.php?id=compatibility_drivers).
 
 We are using [TP-Link TL-WN722N](http://www.tp-link.de/products/details/cat-11_TL-WN722N.html).
 
