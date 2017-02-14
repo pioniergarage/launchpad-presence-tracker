@@ -7,33 +7,50 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 
 def round_down(number, multiple):
-    assert type(number) is int
-    assert type(multiple) is int
+    assert isinstance(number, int) and isinstance(multiple, int)
     return number - (number % multiple)
 
 def get_seconds_from_day(datetime_value):
+    """
+    Returns number of seconds from the beginning of the day.
+    """
+    assert isinstance(datetime_value, datetime.datetime)
     return datetime_value.hour * 60 * 60 + datetime_value.minute * 60 + datetime_value.second
 
 def get_interval_index(datetime_value, interval):
-    assert type(interval) is datetime.timedelta
+    """
+    Returns the index of the interval at the given datetime in the context of a day.
+    The first interval of the day, starting at 00:00:00 has the index 0.
+
+    Example:
+    interval index of (00:17:34, 00:10:00) is 1
+    """
+    assert isinstance(datetime_value, datetime.datetime)
+    assert isinstance(interval, datetime.timedelta)
     seconds = get_seconds_from_day(datetime_value)
     return seconds // interval.seconds
 
 def get_next_start(interval):
-    assert type(interval) is datetime.timedelta
+    """
+    Returns the next start time of the next interval.
+
+    Example:
+    Next start time of (00:10:00) when it is (00:17:34) is (00:20:00)
+    """
+    assert isinstance(interval, datetime.timedelta)
     now = datetime.datetime.now()
     now_seconds = get_seconds_from_day(now)
     last_start_seconds = round_down(now_seconds, interval.seconds)
     hour = last_start_seconds // (60*60)
     minute = (last_start_seconds // 60) % 60
     second = last_start_seconds % (60)
-    last_start = now.replace(hour=hour,minute=minute,second=second,microsecond=0)
+    last_start = now.replace(hour=hour, minute=minute, second=second, microsecond=0)
     return last_start + interval
 
 
 class IntervalTimer:
     def __init__(self, start_func, end_func, interval):
-        assert type(interval) is datetime.timedelta
+        assert isinstance(interval, datetime.timedelta)
         # assert 24 * 60 * 60 % interval.seconds == 0
         self.start_func = start_func
         self.end_func = end_func
@@ -41,28 +58,52 @@ class IntervalTimer:
         self.scheduler = BackgroundScheduler()
 
     def start(self):
+        """
+        Starts the start/end interval routine.
+
+        Returns:
+            start (datetime.datetime): the starting time of the first scheduled intervals.
+        """
         next_start = get_next_start(self.interval)
         next_restart = next_start + self.interval
 
         self.scheduler.add_job(self.start_func, 'date', run_date=next_start)
 
         def restart_func():
+            """Executes the end and start functions between the intervals."""
             self.end_func()
             self.start_func()
 
-        self.scheduler.add_job(restart_func, 'interval', next_run_time=next_restart, seconds=self.interval.seconds)
+        self.scheduler.add_job(restart_func,
+                               'interval',
+                               next_run_time=next_restart,
+                               seconds=self.interval.seconds)
 
         self.scheduler.start()
 
-	return next_start
+        return next_start
 
-    def stop(self):
-	for job in self.scheduler.get_jobs():
-		job.remove()
-	self.scheduler.shutdown()
+    def stop(self, ignore_end_func=True):
+        """
+        Stops the start/end interval routine.
+        """
+        if not ignore_end_func:
+            self.end_func()
+        for job in self.scheduler.get_jobs():
+            job.remove()
+        self.scheduler.shutdown()
 
 
 class Airodump:
+    """
+    A wrapper for a Airodump subprocess.
+
+    The cmd to start the subprocess is:
+        "airodump-ng --write {file_name} --output-format csv {interface}"
+
+    The process outputs the network data into a file named "{file_name}-01.csv".
+    """
+
     def __init__(self, interface, file_name):
         self._cmd = [
             'airodump-ng',
@@ -70,7 +111,7 @@ class Airodump:
             '--output-format', 'csv',
             interface
         ]
-        self._temp_file = file_name + '-01.csv'
+        self._temp_file_name = "{0}-01.csv".format(file_name)
         self._process = None
         self._devnull = open(os.devnull, 'wb')
 
@@ -79,14 +120,23 @@ class Airodump:
         self._devnull.close()
 
     def start(self):
+        """
+        Starts the Airodump process as a subprocess.
+        """
         self._process = subprocess.Popen(self._cmd,
-            stdout=subprocess.PIPE,
-            stderr=self._devnull)
+                                         stdout=subprocess.PIPE,
+                                         stderr=self._devnull)
 
     def running(self):
-        return self._process != None and self._process.poll() == None
+        """
+        Returns whether or not the Airodump process is running.
+        """
+        return self._process is not None and self._process.poll() is None
 
     def stop(self):
+        """
+        Stops the Airodump process and deletes the data file.
+        """
         try:
             # Throws error when terminate is called more than once
             self._process.terminate()
@@ -96,17 +146,27 @@ class Airodump:
         while self.running():
             time.sleep(0.1)
         try:
-            os.remove(self._temp_file)
+            os.remove(self._temp_file_name)
         except OSError:
             return
 
     def restart(self):
+        """
+        Restarts the Airodump process.
+        """
         self.stop()
         self.start()
 
     def output(self):
+        """
+        Returns the output generated by the Airodump process.
+        The lines are read from the temporary file.
+
+        Returns:
+            output (list): the lines from the process output.
+        """
         lines = []
-        with open(self._temp_file) as file:
+        with open(self._temp_file_name) as file:
             line = file.readline()
             while line:
                 lines.append(line)
@@ -115,7 +175,12 @@ class Airodump:
 
 
 class Activity:
+    """
+    An Activity is an object representing device activity information.
+    """
+
     def __init__(self, mac, first, last, bssid):
+        assert isinstance(first, datetime.datetime) and isinstance(last, datetime.datetime)
         self.mac = mac
         self.first = first
         self.last = last
@@ -125,7 +190,55 @@ class Activity:
         return self.to_csv()
 
     def to_csv(self):
-        return ", ".join([self.mac, self.bssid, self.first.isoformat(" "), self.last.isoformat(" ")])
+        """
+        Returns a csv line representing the Activity.
+        The format is: (mac address, bssid address, first time seen, last time seen)
+        Example csv string:
+            "E6:79:D3:B4:2E:9F;E6:79:D3:B4:2E:9F;2015-03-03T05:34:43;2019-02-10T12:17:53"
+
+        Returns:
+            csv_str (str): the csv line representing the Activity.
+        """
+        return ";".join([self.mac,
+                         self.bssid,
+                         self.first.isoformat(),
+                         self.last.isoformat()])
+
+class Dump:
+    """
+    A Dump consists of activities and interval information.
+    """
+
+    def __init__(self, hashset_map, from_datetime, to_datetime):
+        # hash_map has the structure [(hash, activity), ...]
+        assert isinstance(hashset_map, list)
+        all(isinstance(x[0], str) and isinstance(x[1], Activity) for x in hashset_map)
+
+        assert isinstance(from_datetime, datetime.datetime)
+        assert isinstance(to_datetime, datetime.datetime)
+
+        # list(hash_values_iter) has the structure [hash, ...]
+        # list(activities_iter) has the structure [activity, ...]
+        hash_values_iter, activities_iter = zip(*hashset_map)
+
+        self.activities = list(activities_iter)
+        self.hash_values = list(hash_values_iter)
+        self.from_datetime = from_datetime
+        self.to_datetime = to_datetime
+
+    def to_csv(self):
+        """
+        Returns a csv line representing the Dump.
+        The format is: (from datetime, to datetime, number of activities)
+        Example csv string:
+            "2015-03-03T05:34:43;2019-02-10T12:17:53;20"
+
+        Returns:
+            csv_str (str): the csv line representing the Dump.
+        """
+        return ";".join([self.from_datetime.isoformat(),
+                         self.to_datetime.isoformat(),
+                         len(self.activities)])
 
 
 class HashSet:
@@ -134,23 +247,45 @@ class HashSet:
     """
 
     def __init__(self, salt=""):
+        assert isinstance(salt, str)
+
         self.table = {}
         self.set = set()
         self.salt = salt
 
     def add(self, item, key=lambda x: x):
-        assert isinstance(key(item), str)
-        table_item = self.table.get(key(item))
-        if table_item == None:
+        """
+        Adds a item to the set.
+        key(item) must return a string.
+
+        Args:
+            item (any): the item that should be added.
+            key (FunctionType): a function which retrieves a string key from the item.
+                (default: lambda x: x)
+        """
+        item_key = key(item)
+        assert isinstance(item_key, str)
+        table_item = self.table.get(item_key)
+        if table_item is None:
             item_hash = hashlib.sha256(key(item).encode('utf-8') + self.salt).hexdigest()
             table_item = (item_hash, item)
             self.table[key(item)] = table_item
         self.set.add(table_item)
 
     def clear(self):
+        """
+        Removes all items from the set.
+        """
         self.set.clear()
 
     def flush(self):
+        """
+        Returns a hash mapping for the items as a list.
+        The structure is [(hash, item), ...]
+
+        Returns:
+            map (list): the hash mapping for the items.
+        """
         return list(self.set)
 
 
@@ -162,19 +297,42 @@ class API:
     def __init__(self, base_url):
         self.base_url = base_url
 
-    def post_activities(self, hashset_list, interval_info):
+    def post_activities(self, dump):
+        """
+        Sends a POST request to the {base_url}/activities endpoint.
+        The request looks like:
+            ``POST HTTP 1.1 http://endpoint.com/activities
+            {
+                "activities": [
+                    { "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }
+                ],
+                "interval" {
+                    "from": "2015-03-03T05:34:43",
+                    "to": "2019-02-10T12:17:53"
+                    "length": "0:30:00"
+                },
+                "count": 1,
+                "datetime": "2019-02-10T12:17:53"
+            }``
+        """
+        assert isinstance(dump, Dump)
+
         url = "{0}/activities".format(self.base_url)
         now = datetime.datetime.now()
         body_dict = {
             'activities': [{
-                # 'mac': item.mac,
-                # 'bssid': item.bssid,
-                # 'first': item.first.isoformat(),
-                # 'last': item.last.isoformat(),
+                # 'mac': activity.mac,
+                # 'bssid': activity.bssid,
+                # 'first': activity.first.isoformat(),
+                # 'last': activity.last.isoformat(),
                 'hash': hash_value
-            } for (hash_value, item) in hashset_list],
-            'interval': interval_info,
-            'count': len(hashset_list),
+            } for (hash_value, activity) in zip(dump.hash_values, dump.activities)],
+            'interval': {
+                'from': dump.from_datetime.isoformat(),
+                'to': dump.to_datetime.isoformat(),
+                'length': str(dump.to_datetime - dump.from_datetime)
+            },
+            'count': len(dump.activities),
             'datetime': now.replace(microsecond=0).isoformat()
         }
         json_str = json.dumps(body_dict, indent=2)

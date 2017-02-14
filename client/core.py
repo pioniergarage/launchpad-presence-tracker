@@ -1,7 +1,8 @@
-from lib import IntervalTimer, HashSet, API, Activity, Airodump, get_interval_index
-import parser
 import datetime
 import time
+
+from lib import IntervalTimer, HashSet, API, Airodump, Dump
+import parser
 import config
 
 """
@@ -17,28 +18,31 @@ log.addHandler(h)
 """
 
 def main():
-
+    """
+    The main function of the client.
+    """
     hashset = HashSet(config.salt)
     api = API(config.api_url)
     process = Airodump(config.interface, "temp")
-    filter = lambda activities: [x for x in activities if config.bssid_filter(x.bssid) and config.mac_filter(x.mac)]
+
+    activity_filter = lambda activities: (
+        [x for x in activities
+         if config.bssid_filter(x.bssid) and config.mac_filter(x.mac)])
 
     interval = config.interval
 
     def start_func():
+        """Function that is executed at the start of an interval."""
         process.start()
 
     def end_func():
-        for activity in filter(parser.extract_activities(process.output())):
+        """Function that is executed at the end of an interval."""
+        for activity in activity_filter(parser.extract_activities(process.output())):
             hashset.add(activity, key=lambda x: x.mac)
         now = datetime.datetime.now().replace(microsecond=0)
-        interval_info = {
-            'from': (now - interval).isoformat(),
-            'to': now.isoformat(),
-            'length': str(interval),
-            'index': get_interval_index(now-interval//2, interval)
-        }
-        api.post_activities(hashset.flush(), interval_info)
+
+        dump = Dump(hashset.flush(), (now - interval), now)
+        api.post_activities(dump)
         process.stop()
         hashset.clear()
 
@@ -52,8 +56,8 @@ def main():
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         print("KeyboardInterrupt detected, stopping process...")
-	process.stop()
-	timer.stop()
+    process.stop()
+    timer.stop()
 
 
 if __name__ == '__main__':
