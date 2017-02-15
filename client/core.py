@@ -33,6 +33,8 @@ def save_dump_to_files(dump):
     """
     assert isinstance(dump, Dump)
 
+    print("\n".join([a.to_csv() for a in dump.activities]))
+
     # Example:
     # "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855;
     #  2015-03-03T05:34:43;2019-02-10T12:17:53"
@@ -80,10 +82,10 @@ def main():
         now = datetime.datetime.now().replace(microsecond=0)
 
         dump = Dump(hashset.flush(), (now - interval), now)
+        hashset.clear()
         save_dump_to_files(dump)
         # api.post_activities(dump)
         process.stop()
-        hashset.clear()
 
     timer = IntervalTimer(start_func, end_func, interval)
     start = timer.start()

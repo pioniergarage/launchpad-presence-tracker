@@ -200,10 +200,16 @@ class Activity:
         Returns:
             csv_str (str): the csv line representing the Activity.
         """
+        last_str = self.last.isoformat()
+        if last_str is None:
+            last_str = ""
+        bssid_str = self.bssid
+        if bssid_str is None:
+            bssid_str = "-"
         return ";".join([self.mac,
-                         self.bssid,
+                         bssid_str,
                          self.first.isoformat(),
-                         self.last.isoformat()])
+                         last_str])
 
     def to_hashed_csv(self, hash_value):
         """
@@ -220,9 +226,12 @@ class Activity:
         Returns:
             csv_str (str): the csv line representing the Activity identified by the hash value.
         """
+        last_str = self.last.isoformat()
+        if last_str is None:
+            last_str = ""
         return ";".join([hash_value,
                          self.first.isoformat(),
-                         self.last.isoformat()])
+                         last_str])
 
 class Dump:
     """
@@ -239,7 +248,12 @@ class Dump:
 
         # list(hash_values_iter) has the structure [hash, ...]
         # list(activities_iter) has the structure [activity, ...]
-        hash_values_iter, activities_iter = zip(*hashset_map)
+	hash_values_iter = ()
+        activities_iter = ()
+        try:
+            hash_values_iter, activities_iter = zip(*hashset_map)
+        except ValueError:
+            pass
 
         self.activities = list(activities_iter)
         self.hash_values = list(hash_values_iter)
@@ -258,7 +272,7 @@ class Dump:
         """
         return ";".join([self.from_datetime.isoformat(),
                          self.to_datetime.isoformat(),
-                         len(self.activities)])
+                         str(len(self.activities))])
 
 
 class HashSet:
@@ -288,10 +302,13 @@ class HashSet:
 
         table_item = self.table.get(item_key)
 
+        table_hash = None
         if table_item is None:
             item_hash = hashlib.sha256(key(item).encode('utf-8') + self.salt).hexdigest()
-            table_item = (item_hash, item)
-            self.table[key(item)] = table_item
+        else:
+            item_hash = table_item[0]
+        table_item = (item_hash, item)
+        self.table[key(item)] = table_item
         self.set.add(table_item)
 
     def clear(self):
