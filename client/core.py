@@ -1,3 +1,7 @@
+"""
+The client core with the main function.
+"""
+
 import datetime
 import time
 
@@ -5,17 +9,51 @@ from lib import IntervalTimer, HashSet, API, Airodump, Dump
 import parser
 import config
 
-"""
-import logging
+# pylint: disable=no-member
 
-log = logging.getLogger('apscheduler.executors.default')
-log.setLevel(logging.INFO)
+def enable_scheduler_log():
+    """
+    Enables logging for apscheduler jobs.
+    """
+    import logging
 
-fmt = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-h = logging.StreamHandler()
-h.setFormatter(fmt)
-log.addHandler(h)
-"""
+    log = logging.getLogger('apscheduler.executors.default')
+    log.setLevel(logging.INFO)
+
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+
+# enable_scheduler_log()
+
+def save_dump_to_files(dump):
+    """
+    Saves dump information and activities in csv files.
+    """
+    assert isinstance(dump, Dump)
+
+    # Example:
+    # "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855;
+    #  2015-03-03T05:34:43;2019-02-10T12:17:53"
+    activity_lines = [
+        a.to_hashed_csv(h)
+        for (h, a) in zip(dump.hash_values, dump.activities)]
+
+    with open("activities.csv", "a") as activities_file:
+        activities_file.write("\n".join(activity_lines))
+        activities_file.write("\n")
+
+    with open("dumps.csv", "a") as dumps_file:
+        dumps_file.write(dump.to_csv())
+        dumps_file.write("\n")
+
+    print("Saved {0} activities between {1} and {2}...".format(
+        len(dump.activities),
+        dump.from_datetime.isoformat(" "),
+        dump.to_datetime.isoformat(" ")))
+
+
 
 def main():
     """
@@ -42,14 +80,15 @@ def main():
         now = datetime.datetime.now().replace(microsecond=0)
 
         dump = Dump(hashset.flush(), (now - interval), now)
-        api.post_activities(dump)
+        save_dump_to_files(dump)
+        # api.post_activities(dump)
         process.stop()
         hashset.clear()
 
     timer = IntervalTimer(start_func, end_func, interval)
     start = timer.start()
 
-    print("First interval starting {0}...".format(start.isoformat(" ")))
+    print("First interval starting at {0}...".format(start.isoformat(" ")))
 
     try:
         while True:

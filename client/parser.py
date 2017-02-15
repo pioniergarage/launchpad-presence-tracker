@@ -23,8 +23,9 @@ DATETIME_PATTERN = r"([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})"
 OTHER_PATTERN = r"([^\n|,]*)"
 
 # Pattern for a station line.
-# Example: "B6:B7:E3:AC:D8:09, 2016-12-27 14:11:06, 2016-12-27 14:11:15,
-#           -80,      3, (not associated) ,UPC4514352"
+# Example:
+# "B6:B7:E3:AC:D8:09, 2016-12-27 14:11:06, 2016-12-27 14:11:15,
+#  -80,      3, (not associated) ,UPC4514352"
 LINE_PATTERN = r"^{0}, {1}, {2},{3},{4}, {5},{6}".format(
     MAC_PATTERN,
     DATETIME_PATTERN,
@@ -33,6 +34,12 @@ LINE_PATTERN = r"^{0}, {1}, {2},{3},{4}, {5},{6}".format(
     OTHER_PATTERN,
     MAC_OR_NOT_ASSOCIATED_PATTERN,
     OTHER_PATTERN)
+
+# The indices of the different groups in the line regex.
+MAC_GROUP_INDEX = 1
+FIRST_SEEN_GROUP_INDEX = 4
+LAST_SEEN_GROUP_INDEX = 5
+BSSID_GROUP_INDEX = 8
 
 LINE_REGEX = re.compile(LINE_PATTERN)
 NOT_ASSOCIATED_REGEX = re.compile(NOT_ASSOCIATED_PATTERN)
@@ -64,10 +71,10 @@ def extract_activity(line):
     """
     match = LINE_REGEX.search(line)
     if match:
-        mac_str = match.group(1)
-        first_str = match.group(4)
-        last_str = match.group(5)
-        bssid_str = match.group(8)
+        mac_str = match.group(MAC_GROUP_INDEX)
+        first_str = match.group(FIRST_SEEN_GROUP_INDEX)
+        last_str = match.group(LAST_SEEN_GROUP_INDEX)
+        bssid_str = match.group(BSSID_GROUP_INDEX)
         if NOT_ASSOCIATED_REGEX.match(bssid_str):
             bssid_str = None
         try:

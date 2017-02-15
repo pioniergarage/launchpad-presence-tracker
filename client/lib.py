@@ -193,6 +193,7 @@ class Activity:
         """
         Returns a csv line representing the Activity.
         The format is: (mac address, bssid address, first time seen, last time seen)
+
         Example csv string:
             "E6:79:D3:B4:2E:9F;E6:79:D3:B4:2E:9F;2015-03-03T05:34:43;2019-02-10T12:17:53"
 
@@ -201,6 +202,25 @@ class Activity:
         """
         return ";".join([self.mac,
                          self.bssid,
+                         self.first.isoformat(),
+                         self.last.isoformat()])
+
+    def to_hashed_csv(self, hash_value):
+        """
+        Returns a csv line representing the Activity identified by the hash value..
+        The format is: (mac address hash, first time seen, last time seen)
+
+        Example csv string:
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855;
+             2015-03-03T05:34:43;2019-02-10T12:17:53"
+
+        Args:
+            hash_value (str): the hash used to identify the Activity by the mac address.
+
+        Returns:
+            csv_str (str): the csv line representing the Activity identified by the hash value.
+        """
+        return ";".join([hash_value,
                          self.first.isoformat(),
                          self.last.isoformat()])
 
@@ -265,7 +285,9 @@ class HashSet:
         """
         item_key = key(item)
         assert isinstance(item_key, str)
+
         table_item = self.table.get(item_key)
+
         if table_item is None:
             item_hash = hashlib.sha256(key(item).encode('utf-8') + self.salt).hexdigest()
             table_item = (item_hash, item)
@@ -284,7 +306,7 @@ class HashSet:
         The structure is [(hash, item), ...]
 
         Returns:
-            map (list): the hash mapping for the items.
+            map (list of (str, any)): the hash mapping for the items.
         """
         return list(self.set)
 
