@@ -49,7 +49,7 @@ def extract_activities(lines):
     Returns the activities extracted from data lines.
 
     Returns:
-        activities (list): the extracted activities.
+        activities (list of Activity): the extracted activities.
     """
     activities = []
 

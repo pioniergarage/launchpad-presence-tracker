@@ -248,7 +248,7 @@ class Dump:
 
         # list(hash_values_iter) has the structure [hash, ...]
         # list(activities_iter) has the structure [activity, ...]
-	hash_values_iter = ()
+        hash_values_iter = ()
         activities_iter = ()
         try:
             hash_values_iter, activities_iter = zip(*hashset_map)

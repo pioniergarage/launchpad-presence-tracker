@@ -4,6 +4,7 @@ The client core with the main function.
 
 import datetime
 import time
+import os
 
 from lib import IntervalTimer, HashSet, API, Airodump, Dump
 import parser
@@ -27,24 +28,11 @@ def enable_scheduler_log():
 
 # enable_scheduler_log()
 
-def save_dump_to_files(dump):
+def save_dump_to_file(dump):
     """
     Saves dump information and activities in csv files.
     """
     assert isinstance(dump, Dump)
-
-    print("\n".join([a.to_csv() for a in dump.activities]))
-
-    # Example:
-    # "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855;
-    #  2015-03-03T05:34:43;2019-02-10T12:17:53"
-    activity_lines = [
-        a.to_hashed_csv(h)
-        for (h, a) in zip(dump.hash_values, dump.activities)]
-
-    with open("activities.csv", "a") as activities_file:
-        activities_file.write("\n".join(activity_lines))
-        activities_file.write("\n")
 
     with open("dumps.csv", "a") as dumps_file:
         dumps_file.write(dump.to_csv())
@@ -65,6 +53,11 @@ def main():
     api = API(config.api_url)
     process = Airodump(config.interface, "temp")
 
+    try:
+        os.remove(process._temp_file_name)
+    except OSError:
+        pass
+
     activity_filter = lambda activities: (
         [x for x in activities
          if config.bssid_filter(x.bssid) and config.mac_filter(x.mac)])
@@ -83,7 +76,7 @@ def main():
 
         dump = Dump(hashset.flush(), (now - interval), now)
         hashset.clear()
-        save_dump_to_files(dump)
+        save_dump_to_file(dump)
         # api.post_activities(dump)
         process.stop()
 
